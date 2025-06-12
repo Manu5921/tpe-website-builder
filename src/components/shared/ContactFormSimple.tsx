@@ -2,25 +2,13 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-// import { useForm } from 'react-hook-form';
-// import { zodResolver } from '@hookform/resolvers/zod';
-// import { z } from 'zod';
 import { Send, Phone, Mail, MapPin, Clock, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { BusinessType } from '@/lib/configs/config.types';
-
-const baseSchema = z.object({
-  name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
-  email: z.string().email('Email invalide'),
-  phone: z.string().regex(/^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/, 'Numéro de téléphone invalide'),
-  message: z.string().min(10, 'Le message doit contenir au moins 10 caractères'),
-});
 
 interface ContactFormProps {
-  businessType: BusinessType;
+  businessType: string;
   emailTo: string;
   successMessage?: string;
-  webhookUrl?: string;
   businessInfo?: {
     phone?: string;
     email?: string;
@@ -32,123 +20,64 @@ interface ContactFormProps {
     secondary: string;
     accent: string;
   };
-  customFields?: Array<{
-    name: string;
-    label: string;
-    type: 'text' | 'select' | 'date' | 'time';
-    options?: string[];
-    required?: boolean;
-  }>;
 }
 
-export const ContactForm: React.FC<ContactFormProps> = ({
+export const ContactFormSimple: React.FC<ContactFormProps> = ({
   businessType,
   emailTo,
   successMessage = "Merci pour votre message ! Nous vous recontacterons dans les plus brefs délais.",
-  webhookUrl,
   businessInfo,
   theme = {
     primary: 'blue-600',
     secondary: 'gray-800',
     accent: 'orange-500'
-  },
-  customFields = []
+  }
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-
-  // Create dynamic schema based on custom fields
-  const dynamicSchema = customFields.reduce((acc, field) => {
-    if (field.required) {
-      acc[field.name] = z.string().min(1, `${field.label} est requis`);
-    } else {
-      acc[field.name] = z.string().optional();
-    }
-    return acc;
-  }, {} as Record<string, z.ZodType>);
-
-  const formSchema = baseSchema.extend(dynamicSchema);
-  type FormData = z.infer<typeof formSchema>;
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset
-  } = useForm<FormData>({
-    resolver: zodResolver(formSchema)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: ''
   });
 
-  const onSubmit = async (data: FormData) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
     
     try {
-      if (webhookUrl) {
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...data,
-            to: emailTo,
-            businessType,
-            timestamp: new Date().toISOString()
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('Erreur lors de l\'envoi du message');
-        }
-      } else {
-        // Fallback: Use mailto link
-        const subject = `Nouveau message de ${data.name}`;
-        const body = `
-Nom: ${data.name}
-Email: ${data.email}
-Téléphone: ${data.phone}
+      // Simulate form submission
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Create mailto link as fallback
+      const subject = `Nouveau message de ${formData.name}`;
+      const body = `
+Nom: ${formData.name}
+Email: ${formData.email}
+Téléphone: ${formData.phone}
 
 Message:
-${data.message}
-
-${customFields.map(field => {
-  const value = data[field.name as keyof FormData];
-  return value ? `${field.label}: ${value}` : '';
-}).filter(Boolean).join('\n')}
-        `.trim();
-        
-        window.location.href = `mailto:${emailTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      }
-
+${formData.message}
+      `.trim();
+      
+      window.location.href = `mailto:${emailTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      
       setIsSuccess(true);
-      reset();
+      setFormData({ name: '', email: '', phone: '', message: '' });
       setTimeout(() => setIsSuccess(false), 5000);
     } catch (error) {
       console.error('Error submitting form:', error);
       alert('Une erreur est survenue. Veuillez réessayer.');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const getPlaceholder = (fieldName: string) => {
-    switch (businessType) {
-      case 'plumber':
-        return fieldName === 'message' 
-          ? 'Décrivez votre problème de plomberie...'
-          : '';
-      case 'restaurant':
-        return fieldName === 'message'
-          ? 'Nombre de personnes, date souhaitée, occasion spéciale...'
-          : '';
-      case 'medical':
-        return fieldName === 'message'
-          ? 'Décrivez vos symptômes ou le motif de consultation...'
-          : '';
-      default:
-        return fieldName === 'message'
-          ? 'Comment pouvons-nous vous aider ?'
-          : '';
     }
   };
 
@@ -166,10 +95,7 @@ ${customFields.map(field => {
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             {businessType === 'plumber' && "Urgence ou devis gratuit, nous sommes là pour vous"}
-            {businessType === 'restaurant' && "Réservez votre table ou contactez-nous pour tout événement"}
-            {businessType === 'medical' && "Prenez rendez-vous ou contactez notre secrétariat"}
-            {businessType === 'legal' && "Consultez-nous pour tout conseil juridique"}
-            {!['plumber', 'restaurant', 'medical', 'legal'].includes(businessType) && "Nous sommes à votre écoute"}
+            {businessType !== 'plumber' && "Nous sommes à votre écoute"}
           </p>
         </motion.div>
 
@@ -263,20 +189,6 @@ ${customFields.map(field => {
                   </div>
                 )}
               </div>
-
-              {businessType === 'plumber' && (
-                <div className={cn(
-                  "mt-8 p-6 rounded-xl",
-                  `bg-${theme.accent}/10 border border-${theme.accent}/20`
-                )}>
-                  <p className={cn("font-semibold mb-2", `text-${theme.accent}`)}>
-                    🚨 Urgence 24h/24 7j/7
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    Pour toute urgence, appelez-nous directement
-                  </p>
-                </div>
-              )}
             </div>
           </motion.div>
 
@@ -299,7 +211,7 @@ ${customFields.map(field => {
                   <p className="text-gray-600">{successMessage}</p>
                 </motion.div>
               ) : (
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -308,18 +220,13 @@ ${customFields.map(field => {
                       <input
                         type="text"
                         id="name"
-                        {...register('name')}
-                        className={cn(
-                          "w-full px-4 py-3 rounded-lg border transition-colors",
-                          errors.name 
-                            ? "border-red-500 focus:ring-red-500" 
-                            : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        )}
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
                         placeholder="Jean Dupont"
                       />
-                      {errors.name && (
-                        <p className="mt-1 text-sm text-red-600">{errors.name.message as string}</p>
-                      )}
                     </div>
 
                     <div>
@@ -329,18 +236,13 @@ ${customFields.map(field => {
                       <input
                         type="email"
                         id="email"
-                        {...register('email')}
-                        className={cn(
-                          "w-full px-4 py-3 rounded-lg border transition-colors",
-                          errors.email 
-                            ? "border-red-500 focus:ring-red-500" 
-                            : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        )}
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
                         placeholder="jean.dupont@email.com"
                       />
-                      {errors.email && (
-                        <p className="mt-1 text-sm text-red-600">{errors.email.message as string}</p>
-                      )}
                     </div>
                   </div>
 
@@ -351,49 +253,13 @@ ${customFields.map(field => {
                     <input
                       type="tel"
                       id="phone"
-                      {...register('phone')}
-                      className={cn(
-                        "w-full px-4 py-3 rounded-lg border transition-colors",
-                        errors.phone 
-                          ? "border-red-500 focus:ring-red-500" 
-                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      )}
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
                       placeholder="06 12 34 56 78"
                     />
-                    {errors.phone && (
-                      <p className="mt-1 text-sm text-red-600">{errors.phone.message as string}</p>
-                    )}
                   </div>
-
-                  {/* Custom Fields */}
-                  {customFields.map((field) => (
-                    <div key={field.name}>
-                      <label htmlFor={field.name} className="block text-sm font-medium text-gray-700 mb-2">
-                        {field.label}
-                      </label>
-                      {field.type === 'select' ? (
-                        <select
-                          id={field.name}
-                          {...register(field.name as any)}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
-                        >
-                          <option value="">Sélectionnez...</option>
-                          {field.options?.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type={field.type}
-                          id={field.name}
-                          {...register(field.name as any)}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
-                        />
-                      )}
-                    </div>
-                  ))}
 
                   <div>
                     <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
@@ -401,19 +267,14 @@ ${customFields.map(field => {
                     </label>
                     <textarea
                       id="message"
+                      name="message"
                       rows={5}
-                      {...register('message')}
-                      className={cn(
-                        "w-full px-4 py-3 rounded-lg border transition-colors resize-none",
-                        errors.message 
-                          ? "border-red-500 focus:ring-red-500" 
-                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      )}
-                      placeholder={getPlaceholder('message')}
+                      value={formData.message}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors resize-none"
+                      placeholder="Comment pouvons-nous vous aider ?"
                     />
-                    {errors.message && (
-                      <p className="mt-1 text-sm text-red-600">{errors.message.message as string}</p>
-                    )}
                   </div>
 
                   <button

@@ -7,7 +7,7 @@ import { HeroSection } from '@/components/shared/HeroSection';
 import { ServicesGrid } from '@/components/shared/ServicesGrid';
 import { Testimonials } from '@/components/shared/Testimonials';
 import { FAQ } from '@/components/shared/FAQ';
-import { ContactForm } from '@/components/shared/ContactForm';
+import { ContactFormSimple } from '@/components/shared/ContactFormSimple';
 import { Footer } from '@/components/shared/Footer';
 import { ClientConfig } from '@/lib/configs/config.types';
 import { cn } from '@/lib/utils/cn';
@@ -199,7 +199,7 @@ export const PlumberTemplate: React.FC<PlumberTemplateProps> = ({ config }) => {
       )}
 
       <section id="contact">
-        <ContactForm
+        <ContactFormSimple
           businessType="plumber"
           emailTo={business.email}
           businessInfo={{
@@ -211,22 +211,6 @@ export const PlumberTemplate: React.FC<PlumberTemplateProps> = ({ config }) => {
               : undefined
           }}
           theme={theme.colors}
-          customFields={[
-            {
-              name: 'urgency',
-              label: 'Type intervention',
-              type: 'select',
-              options: ['Urgence (< 2h)', 'Dépannage (< 24h)', 'Devis travaux', 'Entretien planifié'],
-              required: true
-            },
-            {
-              name: 'problem',
-              label: 'Nature du problème',
-              type: 'select',
-              options: ['Fuite eau', 'Canalisation bouchée', 'Chauffe-eau', 'Installation sanitaire', 'Autre'],
-              required: false
-            }
-          ]}
         />
       </section>
 
